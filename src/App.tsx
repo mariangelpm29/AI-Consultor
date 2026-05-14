@@ -668,33 +668,66 @@ export default function App() {
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {currentScreen === 'interviews' ? (
             <div className="p-6">
-              <h3 className="text-[10px] font-bold text-editorial-muted dark:text-dark-muted uppercase tracking-[0.15em] mb-4 flex items-center gap-2">
-                Sesiones Abiertas
-              </h3>
-              <div className="space-y-2">
-                {chats.filter(c => c.status === 'open').length === 0 && (
-                  <p className="text-[10px] text-editorial-muted italic opacity-50">No hay entrevistas activas.</p>
-                )}
-                {chats.filter(c => c.status === 'open').map(chat => (
-                  <button
-                    key={chat.id}
-                    onClick={() => { setActiveChat(chat); setView('chat'); setActiveReport(null); }}
-                    className={cn(
-                      "w-full text-left p-4 transition-all border-l-2 text-sm",
-                      activeChat?.id === chat.id 
-                        ? "bg-editorial-highlight border-editorial-red font-semibold text-editorial-accent" 
-                        : "border-transparent text-editorial-muted hover:bg-editorial-bg hover:text-editorial-text"
-                    )}
+              <div className="flex items-center justify-between mb-4 border-b border-black/10 pb-2">
+                <h3 className="text-[10px] font-bold text-editorial-muted dark:text-dark-muted uppercase tracking-[0.15em] flex items-center gap-2">
+                  Sesiones Abiertas
+                </h3>
+                {selectedChats.length > 0 && (
+                  <button 
+                    onClick={deleteSelected}
+                    className="text-[9px] font-black text-editorial-red flex items-center gap-1 hover:underline"
                   >
-                    <p className="font-black truncate text-[11px] uppercase tracking-tight">
-                      {chat.role || "Candidato a IA"}
-                    </p>
-                    <div className="text-[9px] uppercase tracking-tighter italic opacity-60 flex items-center gap-1.5 mt-1">
-                      <div className={cn("w-1 h-1 rounded-full", activeChat?.id === chat.id ? "bg-editorial-red dark:bg-dark-accent" : "bg-editorial-muted dark:bg-dark-muted")} /> 
-                      {chat.id.substring(0, 8)} • {chat.model.includes('flash') ? 'FLASH' : 'PRO'}
-                    </div>
+                    <Trash2 className="h-2.5 w-2.5" /> Borrar ({selectedChats.length})
                   </button>
-                ))}
+                )}
+              </div>
+              <div className="space-y-2">
+                {chats.filter(c => c.status === 'open').length === 0 ? (
+                  <p className="text-[10px] text-editorial-muted italic opacity-50">No hay entrevistas activas.</p>
+                ) : (
+                  chats.filter(c => c.status === 'open').map(chat => (
+                    <div
+                      key={chat.id}
+                      onClick={(e) => { 
+                        const target = e.target as HTMLElement;
+                        if (!target.closest('input[type="checkbox"]') && !target.closest('.delete-btn')) {
+                          setActiveChat(chat); setView('chat'); setActiveReport(null); 
+                        }
+                      }}
+                      className={cn(
+                        "w-full text-left p-4 transition-all border-l-2 text-sm cursor-pointer group flex justify-between items-start",
+                        activeChat?.id === chat.id 
+                          ? "bg-editorial-highlight border-editorial-red font-semibold text-editorial-accent" 
+                          : "border-transparent text-editorial-muted hover:bg-editorial-bg hover:text-editorial-text"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <input 
+                          type="checkbox"
+                          checked={selectedChats.includes(chat.id)}
+                          onChange={(e) => toggleChatSelection(e, chat.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-3.5 h-3.5 accent-editorial-red cursor-pointer"
+                        />
+                        <div className="flex-1 min-w-0 pr-2">
+                          <p className="font-black truncate text-[11px] uppercase tracking-tight">
+                            {chat.role || "Candidato a IA"}
+                          </p>
+                          <div className="text-[9px] uppercase tracking-tighter italic opacity-60 flex items-center gap-1.5 mt-1">
+                            <div className={cn("w-1 h-1 rounded-full", activeChat?.id === chat.id ? "bg-editorial-red dark:bg-dark-accent" : "bg-editorial-muted dark:bg-dark-muted")} /> 
+                            {chat.id.substring(0, 8)} • {chat.model.includes('flash') ? 'FLASH' : 'PRO'}
+                          </div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={(e) => deleteChat(e, chat.id)}
+                        className="p-1 text-editorial-muted hover:text-editorial-red opacity-0 group-hover:opacity-100 transition-all delete-btn"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           ) : (
@@ -1136,7 +1169,11 @@ export default function App() {
                               "bg-white dark:bg-dark-surface p-8 border-t-4 border-t-editorial-red dark:border-t-editorial-red border border-editorial-border dark:border-dark-border shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] group transition-all cursor-pointer relative flex flex-col h-full",
                               selectedChats.includes(chat.id) && "ring-2 ring-editorial-red border-editorial-red"
                             )}
-                            onClick={() => { setActiveChat(chat); setView('chat'); setCurrentScreen('interviews'); }}
+                            onClick={(e) => {
+                              if (!(e.target as HTMLElement).closest('input[type="checkbox"]') && !(e.target as HTMLElement).closest('button')) {
+                                setActiveChat(chat); setView('chat'); setCurrentScreen('interviews'); 
+                              }
+                            }}
                           >
                             <div className="flex justify-between items-start mb-6">
                                <div className="w-10 h-10 bg-editorial-red/10 flex items-center justify-center">
@@ -1147,8 +1184,15 @@ export default function App() {
                                    type="checkbox"
                                    checked={selectedChats.includes(chat.id)}
                                    onChange={(e) => toggleChatSelection(e, chat.id)}
+                                   onClick={(e) => e.stopPropagation()}
                                    className="w-4 h-4 accent-editorial-red cursor-pointer"
                                  />
+                                 <button 
+                                   onClick={(e) => deleteChat(e, chat.id)}
+                                   className="p-1 px-1.5 text-editorial-muted hover:text-editorial-red transition-colors"
+                                 >
+                                   <Trash2 className="h-3.5 w-3.5" />
+                                 </button>
                                  <span className="text-[9px] font-black text-editorial-red uppercase tracking-widest bg-editorial-red/5 px-2 py-1">EN PROCESO</span>
                                </div>
                             </div>
@@ -1188,7 +1232,11 @@ export default function App() {
                               report.status === 'closed' ? "border-t-editorial-teal" : "border-t-editorial-red",
                               selectedReports.includes(report.id) && (report.status === 'closed' ? "ring-2 ring-editorial-teal border-editorial-teal" : "ring-2 ring-editorial-red border-editorial-red")
                             )}
-                            onClick={() => { setActiveReport(report); setView('report'); }}
+                            onClick={(e) => { 
+                              if (!(e.target as HTMLElement).closest('input[type="checkbox"]') && !(e.target as HTMLElement).closest('button')) {
+                                setActiveReport(report); setView('report'); 
+                              }
+                            }}
                           >
                             <div className="flex justify-between items-start mb-6">
                                <FileText className={cn("h-6 w-6 transition-colors", report.status === 'closed' ? "text-editorial-teal" : "text-black dark:text-white group-hover:text-editorial-red")} />
@@ -1197,11 +1245,18 @@ export default function App() {
                                    type="checkbox"
                                    checked={selectedReports.includes(report.id)}
                                    onChange={(e) => toggleReportSelection(e, report.id)}
+                                   onClick={(e) => e.stopPropagation()}
                                    className={cn(
                                      "w-4 h-4 cursor-pointer",
                                      report.status === 'closed' ? "accent-editorial-teal" : "accent-editorial-red"
                                    )}
                                  />
+                                 <button 
+                                   onClick={(e) => deleteReport(e, report.id)}
+                                   className="p-1 px-1.5 text-editorial-muted hover:text-editorial-red transition-colors"
+                                 >
+                                   <Trash2 className="h-3.5 w-3.5" />
+                                 </button>
                                  <span className="text-[9px] font-black text-editorial-muted uppercase tracking-widest bg-editorial-bg dark:bg-dark-bg px-2 py-1">#{report.id.substring(0, 8)}</span>
                                </div>
                             </div>

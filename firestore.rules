@@ -83,6 +83,8 @@ service cloud.firestore {
                       (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'sector', 'role', 'updatedAt'])
                        && incoming().updatedAt == request.time)
                     );
+
+      allow delete: if isSignedIn() && isOwner(existing().userId);
     }
 
     // Reports
@@ -100,6 +102,8 @@ service cloud.firestore {
                       // Action: Toggle Status
                       incoming().diff(existing()).affectedKeys().hasOnly(['status'])
                     );
+
+      allow delete: if isSignedIn() && isOwner(existing().userId);
     }
   }
 }
