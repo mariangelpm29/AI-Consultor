@@ -200,9 +200,21 @@ export default function App() {
 
   const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (e) {
-      console.error("Login failed", e);
+      // For production/Vercel, ensuring popup is triggered by actual user click
+      // which we already do. Adding a timeout check or better error detail.
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result.user) {
+        console.log("Login successful");
+      }
+    } catch (e: any) {
+      console.error("Login failed:", e);
+      if (e.code === 'auth/popup-blocked') {
+        alert("El navegador bloqueó la ventana emergente de Google. Por favor, permita las ventanas emergentes para este sitio.");
+      } else if (e.code === 'auth/unauthorized-domain') {
+        alert("Este dominio no está autorizado en la consola de Firebase. Por favor, añada su dominio de Vercel a 'Dominios autorizados' en Authentication -> Settings.");
+      } else {
+        alert("Error al iniciar sesión: " + (e.message || "Error desconocido"));
+      }
     }
   };
 
@@ -405,82 +417,105 @@ export default function App() {
     if (reportToDownload && view !== 'report') {
       setActiveReport(reportToDownload);
       setView('report');
-      // Wait for React to render and animations to settle
       setTimeout(() => downloadPDF(), 500);
       return;
     }
 
     const element = document.getElementById('report-content');
     if (!element) {
-      console.error("Report content element not found");
-      // Try one last time after a short delay
-      setTimeout(() => {
-        const retryElement = document.getElementById('report-content');
-        if (retryElement) {
-           downloadPDF();
-        } else {
-           alert("No se pudo encontrar el contenido del reporte. Por favor, abra el reporte primero.");
-        }
-      }, 500);
+      alert("Cargando reporte... Intente de nuevo.");
       return;
     }
 
+    const toSafeColor = (color: string) => {
+      if (!color || typeof color !== 'string' || color === 'transparent' || color === 'initial' || color === 'inherit') return color;
+      // If it's already a safe format, return it
+      if (!color.includes('oklch') && !color.includes('oklab') && !color.includes('lch') && !color.includes('color(')) return color;
+      
+      try {
+        const c = document.createElement('canvas');
+        c.width = c.height = 1;
+        const ctx = c.getContext('2d');
+        if (!ctx) return '#111111';
+        ctx.fillStyle = color;
+        ctx.fillRect(0,0,1,1);
+        const [r,g,b,a] = ctx.getImageData(0,0,1,1).data;
+        if (a === 0) return 'transparent';
+        return a === 255 ? `rgb(${r},${g},${b})` : `rgba(${r},${g},${b},${a/255})`;
+      } catch(e) { 
+        return color.toLowerCase().includes('white') ? '#ffffff' : '#111111'; 
+      }
+    };
+
     try {
       setIsDownloading(true);
-      // Wait to ensure everything is settled
       await new Promise(resolve => setTimeout(resolve, 800));
 
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
         onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.getElementById('report-content');
-          if (clonedElement) {
-            // Remove everything else from the body to keep it clean
-            clonedDoc.body.innerHTML = '';
-            clonedDoc.body.appendChild(clonedElement);
-            clonedElement.style.margin = '0';
-            clonedElement.style.padding = '40px'; // Re-add some padding
+          // 1. COMPLETELY REMOVE all existing styles to prevent html2canvas from parsing them
+          const problematicStyles = clonedDoc.querySelectorAll('style, link[rel="stylesheet"]');
+          problematicStyles.forEach(s => s.remove());
 
-            const allElements = clonedElement.getElementsByTagName('*');
-            for (let i = 0; i < allElements.length; i++) {
-              const el = allElements[i] as HTMLElement;
-              const style = window.getComputedStyle(el);
+          const container = clonedDoc.getElementById('report-content');
+          if (container) {
+            // 2. Clear out any global document backgrounds
+            clonedDoc.body.style.backgroundColor = '#ffffff';
+            
+            container.style.backgroundColor = '#ffffff';
+            container.style.color = '#111111';
+            container.style.margin = '0';
+            container.style.padding = '40px';
+            container.style.width = '800px'; // Set a fixed width for consistent rendering
+
+            const allItems = container.getElementsByTagName('*');
+            for(let i=0; i<allItems.length; i++) {
+              const el = allItems[i] as HTMLElement;
               
-              // Force conversion to RGB by re-applying style as inline
-              // and stripping out any oklch/oklab references if found
-              const color = style.color;
-              const bgColor = style.backgroundColor;
-              const borderColor = style.borderColor;
+              // Get computed styles from the original element before they are stripped in the clone
+              const originalEl = document.querySelector(`[id="${el.id}"]`) as HTMLElement;
+              const sourceEl = originalEl || el;
+              const style = window.getComputedStyle(sourceEl);
               
-              if (color && (color.includes('oklch') || color.includes('oklab'))) {
+              // 3. Manually re-apply ONLY essential safe styles inline
+              // and convert any oklch/lab functions during application
+              el.style.color = toSafeColor(style.color) || '#111111';
+              el.style.backgroundColor = toSafeColor(style.backgroundColor) || 'transparent';
+              el.style.borderColor = toSafeColor(style.borderColor) || 'transparent';
+              el.style.borderWidth = style.borderWidth;
+              el.style.borderStyle = style.borderStyle;
+              el.style.padding = style.padding;
+              el.style.margin = style.margin;
+              el.style.display = style.display;
+              el.style.flexDirection = style.flexDirection;
+              el.style.alignItems = style.alignItems;
+              el.style.justifyContent = style.justifyContent;
+              el.style.gap = style.gap;
+              el.style.fontSize = style.fontSize;
+              el.style.fontWeight = style.fontWeight;
+              el.style.fontFamily = 'Inter, system-ui, sans-serif'; // Use standard safe font
+              el.style.lineHeight = style.lineHeight;
+              el.style.borderRadius = style.borderRadius;
+              
+              // Strip all modern effects that cause crashes
+              el.style.filter = 'none';
+              el.style.backdropFilter = 'none';
+              el.style.boxShadow = 'none';
+              
+              if (['H1', 'H2', 'H3', 'H4'].includes(el.tagName)) {
                 el.style.color = '#000000';
-              } else {
-                el.style.color = color;
-              }
-              
-              if (bgColor && (bgColor.includes('oklch') || bgColor.includes('oklab'))) {
-                el.style.backgroundColor = '#ffffff';
-              } else {
-                el.style.backgroundColor = bgColor;
-              }
-
-              if (borderColor && (borderColor.includes('oklch') || borderColor.includes('oklab'))) {
-                el.style.borderColor = '#000000';
-              } else {
-                el.style.borderColor = borderColor;
               }
             }
-
-            const statusButton = clonedElement.querySelector('button');
-            if (statusButton) statusButton.remove();
+            container.querySelectorAll('button').forEach(btn => btn.remove());
           }
         }
       });
       
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -489,21 +524,20 @@ export default function App() {
       let position = 0;
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
       heightLeft -= pageHeight;
 
       while (heightLeft > 0) {
         position = heightLeft - pdfHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
         heightLeft -= pageHeight;
       }
 
-      const fileName = `Protocolo_IA_${(reportToDownload?.role || activeReport?.role || 'Reporte').replace(/\s+/g, '_')}.pdf`;
-      pdf.save(fileName);
+      pdf.save(`Reporte_Protocolo_IA_${Date.now()}.pdf`);
     } catch (error) {
-      console.error("PDF generation failed:", error);
-      alert("Error al generar el PDF. El sistema detectó un conflicto de color (oklab/oklch). Intentando simplificar automáticamente...");
+      console.error("PDF generation error:", error);
+      alert("Error al generar el PDF. El navegador tiene problemas para procesar los colores.");
     } finally {
       setIsDownloading(false);
     }

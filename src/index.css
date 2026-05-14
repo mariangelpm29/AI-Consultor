@@ -24,21 +24,21 @@
 }
 
 :root {
-  /* PERMANENT DARK MODE (Deep Grey + Vinotinto) */
+  /* PERMANENT DARK MODE (Deep Grey + Elegant Vinotinto) */
   --editorial-bg: #121212; 
   --editorial-text: #E5E9EF;
-  --editorial-accent: #B22222; /* Elegant Vinotinto (Firebrick) */
-  --editorial-border: #3D1212;
+  --editorial-accent: #C62828; /* Clear, elegant Vinotinto (Crimson-Red blend) */
+  --editorial-border: #2A2A2A;
   --editorial-muted: #94A3B8;
   --editorial-highlight: #1E1E1E;
-  --editorial-red: #B22222;
-  --editorial-navy: #B22222;
+  --editorial-red: #C62828;
+  --editorial-navy: #C62828;
 
   --dark-bg: #121212;
   --dark-surface: #1E1E1E;
   --dark-text: #E5E9EF;
-  --dark-border: #3D1212;
-  --dark-accent: #B22222;
+  --dark-border: #2A2A2A;
+  --dark-accent: #C62828;
   --dark-muted: #94A3B8;
   --dark-highlight: #2A1A1A;
 
