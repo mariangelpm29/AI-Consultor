@@ -583,7 +583,7 @@ export default function App() {
               <BrainCircuit className="h-12 w-12 text-white dark:text-dark-bg" />
             </div>
           </div>
-          <h1 className="text-4xl font-serif italic text-editorial-accent dark:text-dark-accent mb-3 tracking-tight">Analista AI</h1>
+          <h1 className="text-4xl font-serif italic text-editorial-accent dark:text-dark-accent mb-3 tracking-tight">AI Strategy Analyst</h1>
           <p className="text-editorial-muted dark:text-dark-muted mb-10 leading-relaxed uppercase text-[10px] tracking-[0.2em] font-bold">
             Business Process Architecture & Automation
           </p>
@@ -625,7 +625,7 @@ export default function App() {
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <BrainCircuit className="h-6 w-6 text-editorial-red dark:text-dark-accent" />
-              <h1 className="text-xl font-serif italic text-editorial-accent dark:text-dark-text">AI Strategy</h1>
+              <h1 className="text-xl font-serif italic text-editorial-accent dark:text-dark-text">AI Strategy Analyst</h1>
             </div>
           </div>
           <button 
@@ -871,7 +871,7 @@ export default function App() {
                 <div id="report-content" className="bg-white p-16 border border-black/10 shadow-xl rounded-none relative text-black mx-auto max-w-[800px]">
                   {/* Editorial Watermark */}
                   <div className="absolute top-8 right-8 text-[8px] font-bold uppercase tracking-[0.5em] text-[#8C857D] select-none -rotate-90 origin-right">
-                    OFFICIAL DOCUMENT // ARCHITECT AI v1.0
+                    OFFICIAL DOCUMENT // AI STRATEGY ANALYST v1.0
                   </div>
 
                   <div className="flex flex-col mb-16 border-b-4 border-black pb-12">
@@ -1027,7 +1027,7 @@ export default function App() {
                   <div className="mt-64 pt-12 border-t-4 border-black flex justify-between items-center text-black text-[12px] font-black uppercase tracking-[0.5em]">
                     <div className="flex items-center gap-3">
                       <div className="w-3 h-3 bg-[#A52A2A]"></div>
-                      <span>Architect AI // Sector: {activeReport.sector}</span>
+                      <span>AI Strategy Analyst // Sector: {activeReport.sector}</span>
                     </div>
                     <span>Hash: {activeReport.id.toUpperCase()}</span>
                   </div>
@@ -1376,7 +1376,7 @@ export default function App() {
                  </button>
                  <div className="text-[9px] text-editorial-muted dark:text-dark-muted font-black uppercase tracking-[0.4em] italic opacity-60 flex items-center gap-2">
                     <div className="w-2 h-2 bg-editorial-red rounded-none" />
-                    BPA ENGINE // IA ARCHITECT v1.2
+                    BPA ENGINE // AI STRATEGY ANALYST v1.2
                  </div>
               </div>
             </div>
