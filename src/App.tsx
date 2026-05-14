@@ -52,7 +52,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { generateInterviewResponse, generateFinalReport, MODELS } from './lib/gemini';
+import { generateInterviewResponse, generateFinalReport, MODELS, isApiKeySet } from './lib/gemini';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -253,6 +253,9 @@ export default function App() {
     setIsSending(true);
 
     try {
+      if (!isApiKeySet) {
+        throw new Error('MISSING_API_KEY');
+      }
       // Optimistic update
       const chatDocRef = doc(db, 'conversations', activeChat.id);
       await updateDoc(chatDocRef, {
@@ -282,6 +285,19 @@ export default function App() {
       }
     } catch (e) {
       console.error(e);
+      // Show error in chat
+      const chatDocRef = doc(db, 'conversations', activeChat.id);
+      const errorMessage = e instanceof Error && e.message === 'MISSING_API_KEY' 
+        ? '⚠️ No se ha configurado la clave de IA (VITE_GEMINI_API_KEY) en los ajustes del servidor (Vercel). Por favor, agrégala en Environment Variables y vuelve a desplegar.'
+        : 'Error de conexión con el asistente. Por favor, verifica tu clave de API o conexión a internet.';
+
+      await updateDoc(chatDocRef, {
+        messages: [...updatedMessages, { 
+          role: 'model', 
+          text: errorMessage 
+        }],
+        updatedAt: serverTimestamp()
+      });
     } finally {
       setIsSending(false);
     }

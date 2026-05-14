@@ -1,6 +1,20 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+const getApiKey = () => {
+  // Prefer VITE_ prefix for client-side Vite apps
+  const key = import.meta.env.VITE_GEMINI_API_KEY || 
+              (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) || 
+              '';
+  return key;
+};
+
+const key = getApiKey();
+export const isApiKeySet = !!key;
+if (!key && typeof window !== 'undefined') {
+  console.warn("VITE_GEMINI_API_KEY no encontrada. La IA no responderá hasta que se configure la variable de entorno.");
+}
+
+const ai = new GoogleGenAI({ apiKey: key });
 
 export const MODELS = {
   FLASH: 'gemini-3-flash-preview',
