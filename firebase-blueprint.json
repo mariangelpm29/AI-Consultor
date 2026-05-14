@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["email"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "A chat session between the analyst and the user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "messages": {
+          "type": "array",
+          "description": "List of messages in the conversation"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "closed"]
+        },
+        "sector": { "type": "string" },
+        "role": { "type": "string" },
+        "model": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "messages", "status", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Formal business requirements document generated from a conversation",
+      "type": "object",
+      "properties": {
+        "conversationId": { "type": "string" },
+        "userId": { "type": "string" },
+        "sector": { "type": "string" },
+        "role": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["open", "closed"]
+        },
+        "content": {
+          "type": "object",
+          "properties": {
+            "resumenEjecutivo": { "type": "string" },
+            "inventarioTareas": { "type": "string" },
+            "stackTecnologico": { "type": "string" },
+            "oportunidadesAutomatizacion": { "type": "string" },
+            "requerimientosTecnicos": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["conversationId", "userId", "sector", "role", "content", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile data"
+    },
+    "/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "Storage for ongoing and past interviews"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Finalized requirement documents"
+    }
+  }
+}

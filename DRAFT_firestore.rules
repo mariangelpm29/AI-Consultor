@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitive Definitions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    // Pillar 2 & 3: Validation Blueprints & Path Variable Hardening
+    function isValidConversation(data) {
+      return data.userId == request.auth.uid
+          && data.status in ['open', 'closed']
+          && data.messages is list
+          && data.messages.size() <= 500
+          && (data.get('sector', 'N/A') is string)
+          && (data.get('role', 'N/A') is string)
+          ;
+    }
+
+    function isValidReport(data) {
+      return data.userId == request.auth.uid
+          && isValidId(data.conversationId)
+          && data.sector is string && data.sector.size() <= 200
+          && data.role is string && data.role.size() <= 200
+          && data.status in ['open', 'closed']
+          && data.content is map
+          && data.content.resumenEjecutivo is string && data.content.resumenEjecutivo.size() <= 10000
+          && data.content.inventarioTareas is string && data.content.inventarioTareas.size() <= 20000
+          // Verify that the conversation actually exists and belongs to the user
+          && exists(/databases/$(database)/documents/conversations/$(data.conversationId))
+          && get(/databases/$(database)/documents/conversations/$(data.conversationId)).data.userId == request.auth.uid
+          ;
+    }
+
+    // Connectivity Test
+    match /test/connection {
+      allow get: if true;
+    }
+
+    // User Profile
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) && isValidId(userId);
+    }
+
+    // Conversations
+    match /conversations/{conversationId} {
+      allow get, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() 
+                    && isValidId(conversationId)
+                    && isValidConversation(incoming())
+                    && incoming().createdAt == request.time;
+
+      allow update: if isSignedIn() 
+                    && isOwner(existing().userId)
+                    && (
+                      // Action: Add Message
+                      (incoming().diff(existing()).affectedKeys().hasOnly(['messages', 'updatedAt']) 
+                       && incoming().updatedAt == request.time) ||
+                      // Action: Close/Finalize
+                      (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'sector', 'role', 'updatedAt'])
+                       && incoming().updatedAt == request.time)
+                    );
+    }
+
+    // Reports
+    match /reports/{reportId} {
+      allow get, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn()
+                    && isValidId(reportId)
+                    && isValidReport(incoming())
+                    && incoming().createdAt == request.time;
+
+      allow update: if isSignedIn()
+                    && isOwner(existing().userId)
+                    && (
+                      // Action: Toggle Status
+                      incoming().diff(existing()).affectedKeys().hasOnly(['status'])
+                    );
+    }
+  }
+}
