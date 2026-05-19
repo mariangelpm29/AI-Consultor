@@ -1389,10 +1389,10 @@ export default function App() {
                             {msg.role === 'user' ? (user?.displayName || 'USUARIO') : 'ARQUITECTO SENIOR'}
                           </p>
                           <div className={cn(
-                            "p-4 md:p-8 shadow-xl border text-[12px] md:text-[13px] leading-[1.6] md:leading-[1.8] tracking-wide transition-all font-montserrat",
+                            "p-4 md:p-8 shadow-xl border text-[12px] md:text-[13px] leading-[1.6] md:leading-[1.8] tracking-wide transition-all font-montserrat whitespace-pre-wrap",
                             msg.role === 'user' 
                               ? "bg-[#FEF9E7] text-black border-editorial-border/30 rounded-none shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)]" 
-                              : "bg-[#E5D3B3] text-black border-editorial-border/30 rounded-none italic shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)]"
+                              : "bg-[#E5D3B3] text-black border-editorial-border/30 rounded-none shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)]"
                           )}>
                     {msg.text}
                   </div>
