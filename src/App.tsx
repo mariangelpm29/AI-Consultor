@@ -31,6 +31,8 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import { 
+  Menu,
+  X,
   Trash2,
   Layout, 
   MessageSquare, 
@@ -116,6 +118,7 @@ export default function App() {
   const [repoTab, setRepoTab] = useState<'open' | 'closed' | 'ongoing'>('open');
   const [selectedReports, setSelectedReports] = useState<string[]>([]);
   const [selectedChats, setSelectedChats] = useState<string[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -132,11 +135,11 @@ export default function App() {
     // Disabled logic
   };
 
-  // Dark mode effect for initialization
+  // Beige mode effect for initialization
   useEffect(() => {
-    document.documentElement.classList.add('dark');
-    document.body.classList.add('dark');
-    localStorage.setItem('darkMode', 'true');
+    document.documentElement.classList.remove('dark');
+    document.body.classList.remove('dark');
+    localStorage.setItem('darkMode', 'false');
   }, []);
 
   // Auth
@@ -586,28 +589,27 @@ export default function App() {
   if (!user) {
     return (
       <div className={cn(
-        "flex h-screen flex-col items-center justify-center p-6 text-center transition-colors duration-500",
-        darkMode ? "bg-dark-bg" : "bg-gradient-to-br from-editorial-bg to-editorial-highlight"
+        "flex h-screen flex-col items-center justify-center p-6 text-center transition-colors duration-500 bg-editorial-bg"
       )}>
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full bg-editorial-highlight dark:bg-dark-surface p-10 rounded-none shadow-2xl border border-editorial-border dark:border-dark-border"
+          className="max-w-md w-[90%] sm:w-full bg-editorial-highlight p-6 sm:p-10 rounded-none shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] border border-editorial-border"
         >
           <div className="mb-8 flex justify-center">
-            <div className="p-5 bg-editorial-accent dark:bg-dark-accent rounded-none shadow-lg shadow-editorial-accent/20">
-              <BrainCircuit className="h-12 w-12 text-white dark:text-dark-bg" />
+            <div className="p-4 sm:p-5 bg-editorial-accent rounded-none shadow-lg shadow-editorial-accent/20">
+              <BrainCircuit className="h-8 w-8 sm:h-12 sm:w-12 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-serif italic text-editorial-accent dark:text-dark-accent mb-3 tracking-tight">AI Strategy Analyst</h1>
-          <p className="text-editorial-muted dark:text-dark-muted mb-10 leading-relaxed uppercase text-[10px] tracking-[0.2em] font-bold">
+          <h1 className="text-2xl sm:text-4xl font-serif italic text-editorial-accent mb-3 tracking-tight">AI Strategy Analyst</h1>
+          <p className="text-editorial-muted mb-8 sm:mb-10 leading-relaxed uppercase text-[8px] sm:text-[10px] tracking-[0.2em] font-bold">
             Business Process Architecture & Automation
           </p>
           <button 
             onClick={handleLogin}
-            className="w-full flex items-center justify-center gap-4 bg-editorial-accent dark:bg-dark-accent text-white dark:text-dark-bg px-6 py-5 font-bold uppercase tracking-[0.3em] text-[10px] hover:bg-black dark:hover:bg-white transition-all shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-4 bg-editorial-accent text-white px-6 py-5 font-montserrat font-bold uppercase tracking-[0.3em] text-[10px] hover:bg-black transition-all shadow-xl active:scale-[0.98]"
           >
-            <img src="https://www.google.com/favicon.ico" className="w-5 h-5 grayscale invert dark:grayscale-0 dark:invert-0" alt="Google" />
+            <img src="https://www.google.com/favicon.ico" className="w-5 h-5 grayscale invert" alt="Google" />
             Acceder con Google
           </button>
         </motion.div>
@@ -634,46 +636,71 @@ export default function App() {
   const availableSectors = Array.from(new Set(reports.map(r => r.sector))).sort();
 
   return (
-    <div className="flex h-screen bg-editorial-bg overflow-hidden font-sans text-editorial-text transition-colors duration-500">
+    <div className="flex h-screen bg-editorial-bg overflow-hidden font-sans text-editorial-text transition-colors duration-500 relative">
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-editorial-highlight border-b border-editorial-border flex items-center justify-between px-4 z-50 shadow-md">
+        <button onClick={() => setIsSidebarOpen(true)} className="p-2">
+          <Menu className="h-6 w-6 text-editorial-accent" />
+        </button>
+        <h1 className="text-sm font-serif italic text-editorial-accent">AI Strategy Analyst</h1>
+        <button onClick={startNewChat} className="p-2 bg-editorial-accent text-white">
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/50 z-[55]" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-80 flex-shrink-0 bg-editorial-highlight border-r border-editorial-border flex flex-col transition-all duration-300 shadow-2xl z-40">
+      <aside className={cn(
+        "fixed md:relative w-80 h-full flex-shrink-0 bg-editorial-highlight border-r border-editorial-border flex flex-col transition-all duration-300 shadow-2xl z-[60] md:z-40",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      )}>
         <div className="p-6 border-b border-editorial-border flex items-center justify-between bg-editorial-highlight">
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <BrainCircuit className="h-6 w-6 text-editorial-red dark:text-dark-accent" />
-              <h1 className="text-xl font-serif italic text-editorial-accent dark:text-dark-text">AI Strategy Analyst</h1>
+              <BrainCircuit className="h-6 w-6 text-editorial-red" />
+              <h1 className="text-xl font-serif italic text-editorial-accent">AI Strategy Analyst</h1>
             </div>
           </div>
           <button 
-            onClick={startNewChat}
-            className="p-2 bg-editorial-accent dark:bg-dark-accent text-white dark:text-dark-bg hover:bg-black dark:hover:bg-white transition-all rounded-none"
+            onClick={() => { startNewChat(); setIsSidebarOpen(false); }}
+            className="p-2 bg-editorial-accent text-white hover:bg-black transition-all rounded-none"
             title="Nueva Entrevista"
           >
             <Plus className="h-4 w-4" />
           </button>
+          <button className="md:hidden p-2" onClick={() => setIsSidebarOpen(false)}>
+            <X className="h-5 w-5 text-editorial-muted" />
+          </button>
         </div>
 
         {/* Main Navigation */}
-        <div className="p-4 flex flex-col gap-1 border-b border-editorial-border dark:border-dark-border bg-editorial-bg/30 dark:bg-dark-bg/10">
+        <div className="p-4 flex flex-col gap-1 border-b border-editorial-border bg-editorial-bg/30">
           <button 
-            onClick={() => setCurrentScreen('interviews')}
+            onClick={() => { setCurrentScreen('interviews'); setIsSidebarOpen(false); }}
             className={cn(
               "flex items-center gap-3 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all",
               currentScreen === 'interviews' 
-                ? "bg-editorial-accent dark:bg-dark-accent text-white dark:text-dark-bg shadow-lg" 
-                : "text-editorial-muted dark:text-dark-muted hover:bg-white dark:hover:bg-dark-bg"
+                ? "bg-editorial-accent text-white shadow-lg" 
+                : "text-editorial-muted hover:bg-white"
             )}
           >
             <MessageSquare className="h-3.5 w-3.5" />
             Entrevistas Activas
           </button>
           <button 
-            onClick={() => setCurrentScreen('repository')}
+            onClick={() => { setCurrentScreen('repository'); setIsSidebarOpen(false); }}
             className={cn(
               "flex items-center gap-3 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all",
               currentScreen === 'repository' 
-                ? "bg-editorial-accent dark:bg-dark-accent text-white dark:text-dark-bg shadow-lg" 
-                : "text-editorial-muted dark:text-dark-muted hover:bg-white dark:hover:bg-dark-bg"
+                ? "bg-editorial-accent text-white shadow-lg" 
+                : "text-editorial-muted hover:bg-white"
             )}
           >
             <History className="h-3.5 w-3.5" />
@@ -726,11 +753,11 @@ export default function App() {
                           className="w-3.5 h-3.5 accent-editorial-red cursor-pointer"
                         />
                         <div className="flex-1 min-w-0 pr-2">
-                          <p className="font-black truncate text-[11px] uppercase tracking-tight">
+                          <p className="font-black truncate text-[11px] uppercase tracking-tight text-editorial-accent">
                             {chat.role || "Candidato a IA"}
                           </p>
-                          <div className="text-[9px] uppercase tracking-tighter italic opacity-60 flex items-center gap-1.5 mt-1">
-                            <div className={cn("w-1 h-1 rounded-full", activeChat?.id === chat.id ? "bg-editorial-red dark:bg-dark-accent" : "bg-editorial-muted dark:bg-dark-muted")} /> 
+                          <div className="text-[9px] uppercase tracking-tighter italic opacity-60 flex items-center gap-1.5 mt-1 text-editorial-muted">
+                            <div className={cn("w-1 h-1 rounded-full", activeChat?.id === chat.id ? "bg-editorial-red" : "bg-editorial-muted")} /> 
                             {chat.id.substring(0, 8)} • {chat.model.includes('flash') ? 'FLASH' : 'PRO'}
                           </div>
                         </div>
@@ -807,29 +834,29 @@ export default function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col relative overflow-hidden bg-editorial-bg transition-colors duration-500">
+      <main className="flex-1 flex flex-col relative overflow-hidden bg-editorial-bg transition-colors duration-500 pt-16 md:pt-0">
         {/* Header */}
-        <header className="h-16 border-b border-editorial-border flex items-center justify-between px-8 bg-editorial-highlight backdrop-blur-sm sticky top-0 z-30 transition-all font-sans">
+        <header className="h-16 border-b border-editorial-border flex items-center justify-between px-4 md:px-8 bg-editorial-highlight backdrop-blur-sm sticky top-0 z-30 transition-all font-sans shadow-md">
           <div className="flex items-center gap-4">
-          <h2 className="text-[11px] font-black text-editorial-text dark:text-white uppercase tracking-[0.2em] flex items-center gap-3">
+          <h2 className="text-[9px] md:text-[11px] font-black text-black uppercase tracking-[0.2em] flex items-center gap-2 md:gap-3">
               {view === 'chat' ? (
                 <>
-                  <div className="w-2.5 h-2.5 bg-editorial-red dark:bg-dark-accent rounded-none animate-pulse" />
+                  <div className="w-2.5 h-2.5 bg-editorial-red rounded-none animate-pulse" />
                   CONSULTORÍA ESTRATÉGICA IA
                 </>
               ) : (
                 <>
-                  <div className="w-2.5 h-2.5 bg-editorial-navy dark:bg-dark-accent rounded-none" />
+                  <div className="w-2.5 h-2.5 bg-editorial-navy rounded-none" />
                   REPOSITORIO DE SOLUCIONES
                 </>
               )}
             </h2>
           </div>
 
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-2 md:gap-8">
             {view === 'chat' && activeChat && (
-              <div className="flex items-center gap-2 px-4 py-1.5 bg-editorial-bg border border-editorial-border">
-                <span className="text-[10px] uppercase tracking-[0.15em] text-editorial-muted dark:text-dark-muted font-bold">Motor IA:</span>
+              <div className="hidden sm:flex items-center gap-2 px-2 md:px-4 py-1.5 bg-editorial-bg border border-editorial-border">
+                <span className="text-[8px] md:text-[10px] uppercase tracking-[0.15em] text-editorial-muted font-bold">Motor IA:</span>
                 <select 
                   value={activeChat.model} 
                   onChange={(e) => {
@@ -1091,17 +1118,17 @@ export default function App() {
                 className="max-w-6xl mx-auto w-full p-12"
                >
                  <div className="mb-12 flex flex-col gap-4">
-                    <h2 className="text-5xl font-serif italic text-editorial-text dark:text-white">Archivo Maestro de Implementación IA</h2>
-                    <p className="text-xs font-black uppercase tracking-[0.4em] text-editorial-muted dark:text-dark-muted">Repositorio centralizado de estrategias y requerimientos de automatización</p>
+                    <h2 className="text-5xl font-serif italic text-black">Archivo Maestro de Implementación IA</h2>
+                    <p className="text-xs font-black uppercase tracking-[0.4em] text-editorial-muted">Repositorio centralizado de estrategias y requerimientos de automatización</p>
                     
-                    <div className="flex gap-8 mt-8 border-b border-editorial-border dark:border-dark-border">
+                    <div className="flex gap-8 mt-8 border-b border-editorial-border">
                       <button 
                         onClick={() => { setRepoTab('open'); setSelectedReports([]); }}
                         className={cn(
                           "pb-4 text-[11px] font-black uppercase tracking-[0.3em] transition-all relative",
                           repoTab === 'open' 
-                            ? "text-editorial-red dark:text-editorial-red" 
-                            : "text-editorial-muted hover:text-black dark:hover:text-white"
+                            ? "text-editorial-red" 
+                            : "text-editorial-muted hover:text-black"
                         )}
                       >
                         Casos Abiertos ({reports.filter(r => r.status === 'open' || !r.status).length})
@@ -1112,8 +1139,8 @@ export default function App() {
                         className={cn(
                           "pb-4 text-[11px] font-black uppercase tracking-[0.3em] transition-all relative",
                           repoTab === 'closed' 
-                            ? "text-editorial-teal dark:text-editorial-teal" 
-                            : "text-editorial-muted hover:text-black dark:hover:text-white"
+                            ? "text-editorial-teal" 
+                            : "text-editorial-muted hover:text-black"
                         )}
                       >
                         Casos Cerrados ({reports.filter(r => r.status === 'closed').length})
@@ -1124,12 +1151,12 @@ export default function App() {
                         className={cn(
                           "pb-4 text-[11px] font-black uppercase tracking-[0.3em] transition-all relative",
                           repoTab === 'ongoing' 
-                            ? "text-editorial-accent dark:text-dark-accent" 
-                            : "text-editorial-muted hover:text-black dark:hover:text-white"
+                            ? "text-editorial-accent" 
+                            : "text-editorial-muted hover:text-black"
                         )}
                       >
                         Entrevistas ({chats.filter(c => c.status === 'open').length})
-                        {repoTab === 'ongoing' && <motion.div layoutId="repoTab" className="absolute bottom-0 left-0 w-full h-1 bg-editorial-accent dark:bg-dark-accent" />}
+                        {repoTab === 'ongoing' && <motion.div layoutId="repoTab" className="absolute bottom-0 left-0 w-full h-1 bg-editorial-accent" />}
                       </button>
                     </div>
 
@@ -1140,7 +1167,7 @@ export default function App() {
                           placeholder="BUSCAR POR CARGO, PROCESO O PALABRA CLAVE..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full bg-white dark:bg-dark-surface border border-editorial-border dark:border-dark-border px-10 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-editorial-accent transition-all"
+                          className="w-full bg-editorial-bg border border-editorial-border px-10 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-editorial-accent transition-all text-black"
                         />
                         <Layout className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-editorial-muted" />
                       </div>
@@ -1158,7 +1185,7 @@ export default function App() {
                             </span>
                             <button 
                               onClick={deleteSelected}
-                              className="flex items-center gap-2 px-6 py-3 bg-editorial-red text-white text-[10px] font-black uppercase tracking-[0.2em] hover:bg-black transition-all shadow-lg"
+                              className="flex items-center gap-2 px-6 py-3 bg-editorial-red text-black text-[10px] font-black uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-all shadow-lg"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                               ELIMINAR SELECCIÓN
@@ -1172,7 +1199,7 @@ export default function App() {
                  {repoTab === 'ongoing' ? (
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                       {chats.filter(c => c.status === 'open').length === 0 ? (
-                        <div className="col-span-full flex flex-col items-center justify-center p-24 border-2 border-dashed border-editorial-border dark:border-dark-border bg-white/50 dark:bg-dark-surface/30">
+                        <div className="col-span-full flex flex-col items-center justify-center p-24 border-2 border-dashed border-editorial-border bg-white/50">
                            <MessageSquare className="h-16 w-16 mb-4 text-editorial-muted opacity-20" />
                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-editorial-muted">No hay entrevistas en curso en este momento</p>
                         </div>
@@ -1182,7 +1209,7 @@ export default function App() {
                             whileHover={{ y: -8, scale: 1.02 }}
                             key={chat.id}
                             className={cn(
-                              "bg-white dark:bg-dark-surface p-8 border-t-4 border-t-editorial-red dark:border-t-editorial-red border border-editorial-border dark:border-dark-border shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] group transition-all cursor-pointer relative flex flex-col h-full",
+                              "bg-editorial-highlight p-8 border-t-4 border-t-editorial-red border border-editorial-border shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] group transition-all cursor-pointer relative flex flex-col h-full",
                               selectedChats.includes(chat.id) && "ring-2 ring-editorial-red border-editorial-red"
                             )}
                             onClick={(e) => {
@@ -1213,13 +1240,13 @@ export default function App() {
                                </div>
                             </div>
                             
-                            <h4 className="text-2xl font-serif italic text-black dark:text-white mb-4 leading-tight line-clamp-2">{chat.role || "Candidato a Solución IA"}</h4>
-                            <p className="text-[11px] text-editorial-muted dark:text-dark-muted uppercase font-bold tracking-widest mb-6">
+                            <h4 className="text-2xl font-serif italic text-black mb-4 leading-tight line-clamp-2">{chat.role || "Candidato a Solución IA"}</h4>
+                            <p className="text-[11px] text-editorial-muted uppercase font-bold tracking-widest mb-6">
                               Sesión activa con el modelo {chat.model.includes('flash') ? 'FAST-IA' : 'PRO-IA'}
                             </p>
                             
-                            <div className="mt-auto pt-6 border-t border-editorial-border dark:border-dark-border flex items-center justify-between">
-                              <p className="text-[9px] text-editorial-muted dark:text-dark-muted uppercase font-black tracking-widest">{chat.createdAt?.toDate().toLocaleDateString()}</p>
+                            <div className="mt-auto pt-6 border-t border-editorial-border flex items-center justify-between">
+                              <p className="text-[9px] text-editorial-muted uppercase font-black tracking-widest">{chat.createdAt?.toDate().toLocaleDateString()}</p>
                               <div className="flex items-center gap-2 text-[10px] font-black uppercase text-editorial-red animate-pulse">
                                 <div className="w-2 h-2 bg-editorial-red rounded-full" />
                                 REANUDAR
@@ -1231,7 +1258,7 @@ export default function App() {
                    </div>
                  ) : (
                    filteredReports.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center p-24 border-2 border-dashed border-editorial-border dark:border-dark-border bg-white/50 dark:bg-dark-surface/30">
+                      <div className="flex flex-col items-center justify-center p-24 border-2 border-dashed border-editorial-border bg-white/50">
                          <Database className="h-16 w-16 mb-4 text-editorial-muted opacity-20" />
                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-editorial-muted">
                            {repoTab === 'open' ? 'No hay casos pendientes de implementación' : 'No hay casos cerrados todavía'}
@@ -1244,7 +1271,7 @@ export default function App() {
                             whileHover={{ y: -8, scale: 1.02 }}
                             key={report.id}
                             className={cn(
-                              "bg-white dark:bg-dark-surface p-8 border-t-4 border border-editorial-border dark:border-dark-border shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] group transition-all cursor-pointer relative flex flex-col h-full",
+                              "bg-editorial-highlight p-8 border-t-4 border border-editorial-border shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] group transition-all cursor-pointer relative flex flex-col h-full",
                               report.status === 'closed' ? "border-t-editorial-teal" : "border-t-editorial-red",
                               selectedReports.includes(report.id) && (report.status === 'closed' ? "ring-2 ring-editorial-teal border-editorial-teal" : "ring-2 ring-editorial-red border-editorial-red")
                             )}
@@ -1255,7 +1282,7 @@ export default function App() {
                             }}
                           >
                             <div className="flex justify-between items-start mb-6">
-                               <FileText className={cn("h-6 w-6 transition-colors", report.status === 'closed' ? "text-editorial-teal" : "text-black dark:text-white group-hover:text-editorial-red")} />
+                               <FileText className={cn("h-6 w-6 transition-colors", report.status === 'closed' ? "text-editorial-teal" : "text-black group-hover:text-editorial-red")} />
                                <div className="flex items-center gap-3">
                                  <input 
                                    type="checkbox"
@@ -1273,26 +1300,26 @@ export default function App() {
                                  >
                                    <Trash2 className="h-3.5 w-3.5" />
                                  </button>
-                                 <span className="text-[9px] font-black text-editorial-muted uppercase tracking-widest bg-editorial-bg dark:bg-dark-bg px-2 py-1">#{report.id.substring(0, 8)}</span>
+                                 <span className="text-[9px] font-black text-editorial-muted uppercase tracking-widest bg-editorial-bg px-2 py-1">#{report.id.substring(0, 8)}</span>
                                </div>
                             </div>
                             
                             <div className="mb-2 flex items-center justify-between">
-                              <span className="text-[9px] font-black text-editorial-red dark:text-dark-accent uppercase tracking-widest">{report.sector}</span>
+                              <span className="text-[9px] font-black text-editorial-red uppercase tracking-widest">{report.sector}</span>
                               <span className={cn(
                                 "text-[8px] font-bold uppercase tracking-widest px-2 py-0.5",
-                                report.status === 'closed' ? "bg-editorial-teal text-white" : "bg-editorial-red/10 text-editorial-red"
+                                report.status === 'closed' ? "bg-editorial-teal text-black" : "bg-editorial-red/10 text-editorial-red"
                               )}>
                                 {report.status === 'closed' ? 'Implementado' : 'Abierto'}
                               </span>
                             </div>
-                            <h4 className="text-2xl font-serif italic text-black dark:text-white mb-4 leading-tight group-hover:text-editorial-red transition-colors line-clamp-2">{report.role}</h4>
-                            <p className="text-[11px] text-editorial-muted dark:text-dark-muted uppercase font-bold tracking-widest mb-6 leading-relaxed line-clamp-3">
+                            <h4 className="text-2xl font-serif italic text-black mb-4 leading-tight group-hover:text-editorial-red transition-colors line-clamp-2">{report.role}</h4>
+                            <p className="text-[11px] text-editorial-muted uppercase font-bold tracking-widest mb-6 leading-relaxed line-clamp-3">
                               {report.content.resumenEjecutivo}
                             </p>
                             
-                            <div className="mt-auto pt-6 border-t border-editorial-border dark:border-dark-border flex items-center justify-between">
-                              <p className="text-[9px] text-editorial-muted dark:text-dark-muted uppercase font-black tracking-widest">{report.createdAt?.toDate().toLocaleDateString()}</p>
+                            <div className="mt-auto pt-6 border-t border-editorial-border flex items-center justify-between">
+                              <p className="text-[9px] text-editorial-muted uppercase font-black tracking-widest">{report.createdAt?.toDate().toLocaleDateString()}</p>
                                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-editorial-red opacity-0 group-hover:opacity-100 transition-all">
                                  [ VER PROTOCOLO ]
                                  <ChevronRight className="h-3 w-3" />
@@ -1314,24 +1341,24 @@ export default function App() {
                     transition={{ duration: 0.5 }}
                     className="sticky top-4 left-0 w-full flex justify-center py-2 z-20 pointer-events-none"
                   >
-                    <div className="flex space-x-12 bg-white/95 dark:bg-dark-surface/95 backdrop-blur-md px-12 py-4 border-b-4 border-editorial-red dark:border-dark-accent rounded-none shadow-2xl pointer-events-auto">
+                    <div className="flex space-x-12 bg-[#FEF9E7] backdrop-blur-md px-12 py-4 border-b-4 border-editorial-red rounded-none shadow-xl pointer-events-auto">
                       {[
-                        { label: 'Rol', color: 'bg-editorial-red dark:bg-dark-accent' },
-                        { label: 'Mapeo', color: 'bg-editorial-navy dark:bg-editorial-teal' },
-                        { label: 'Dolores', color: 'bg-editorial-burgundy dark:bg-editorial-navy' },
-                        { label: 'Entregas', color: 'bg-editorial-teal dark:bg-white' }
+                        { label: 'Rol', color: 'bg-editorial-red' },
+                        { label: 'Mapeo', color: 'bg-editorial-navy' },
+                        { label: 'Dolores', color: 'bg-editorial-accent' },
+                        { label: 'Entregas', color: 'bg-teal-700' }
                       ].map((fase, i) => {
                          const isActive = activeChat.messages.length > (i * 2 + 1);
                          return (
-                          <div key={fase.label} className={cn("flex flex-col items-center gap-1.5", !isActive && "opacity-20")}>
-                            <div className={cn("w-1.5 h-1.5 rounded-full mb-1", isActive ? fase.color : "bg-editorial-muted")} />
-                            <span className="text-[8px] font-bold uppercase tracking-[0.3em] text-editorial-muted dark:text-dark-muted">Fase {i+1}</span>
+                          <div key={fase.label} className={cn("flex flex-col items-center gap-1.5", !isActive && "opacity-50")}>
+                            <div className={cn("w-1.5 h-1.5 rounded-full mb-1", isActive ? fase.color : "bg-gray-400")} />
+                            <span className={cn("text-[8px] font-bold uppercase tracking-[0.3em]", isActive ? "text-black" : "text-gray-600")}>Fase {i+1}</span>
                             <span className={cn(
                               "text-[10px] font-black uppercase tracking-widest", 
-                              isActive ? "text-editorial-accent dark:text-dark-text border-b border-editorial-accent dark:border-dark-accent pb-0.5" : "text-editorial-muted dark:text-dark-muted"
+                              isActive ? "text-black border-b-2 border-editorial-accent pb-0.5" : "text-gray-900"
                             )}>{fase.label}</span>
                           </div>
-                         );
+                        );
                       })}
                     </div>
                   </motion.div>
@@ -1357,18 +1384,18 @@ export default function App() {
                         >
                           <p className={cn(
                             "text-[9px] font-bold uppercase tracking-[0.3em] mb-1 px-1",
-                            msg.role === 'user' ? "text-right text-editorial-navy dark:text-dark-accent" : "text-left text-editorial-red dark:text-dark-muted"
+                            msg.role === 'user' ? "text-right text-editorial-navy font-black" : "text-left text-editorial-red font-black"
                           )}>
                             {msg.role === 'user' ? (user?.displayName || 'USUARIO') : 'ARQUITECTO SENIOR'}
                           </p>
                           <div className={cn(
-                            "p-8 shadow-sm border text-[13px] leading-[1.8] tracking-wide transition-all",
+                            "p-4 md:p-8 shadow-xl border text-[12px] md:text-[13px] leading-[1.6] md:leading-[1.8] tracking-wide transition-all font-montserrat",
                             msg.role === 'user' 
-                              ? "bg-editorial-navy dark:bg-dark-highlight text-white dark:text-dark-text border-editorial-navy dark:border-dark-border rounded-none shadow-2xl" 
-                              : "bg-white dark:bg-dark-surface text-editorial-text dark:text-dark-text border-editorial-border dark:border-dark-border rounded-none font-serif italic shadow-md"
+                              ? "bg-[#FEF9E7] text-black border-editorial-border/30 rounded-none shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)]" 
+                              : "bg-[#E5D3B3] text-black border-editorial-border/30 rounded-none italic shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-2px_rgba(0,0,0,0.05)]"
                           )}>
-                            {msg.text}
-                          </div>
+                    {msg.text}
+                  </div>
                         </motion.div>
                       ))}
                       {isSending && (
@@ -1385,15 +1412,15 @@ export default function App() {
                     </div>
                   </motion.div>
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-editorial-muted p-8 text-center bg-white dark:bg-dark-bg transition-colors duration-300">
-                    <div className="h-40 w-px bg-editorial-accent dark:bg-dark-accent mb-10 opacity-30"></div>
-                    <h3 className="text-3xl font-serif italic text-editorial-accent dark:text-dark-accent mb-4">Mesa de Trabajo Digital</h3>
-                    <p className="max-w-sm mb-12 text-[10px] uppercase tracking-[0.4em] leading-loose font-bold opacity-70 dark:text-dark-muted">
+                  <div className="h-full flex flex-col items-center justify-center text-editorial-muted p-8 text-center bg-editorial-bg transition-colors duration-300">
+                    <div className="h-40 w-px bg-editorial-accent mb-10 opacity-30"></div>
+                    <h3 className="text-3xl font-serif italic text-editorial-accent mb-4">Mesa de Trabajo Digital</h3>
+                    <p className="max-w-sm mb-12 text-[10px] uppercase tracking-[0.4em] leading-loose font-bold opacity-70">
                       INICIE UNA SESIÓN DE CONSULTORÍA ESTRATÉGICA PARA EL LEVANTAMIENTO DE ARQUITECTURA DE PROCESOS.
                     </p>
                     <button 
                       onClick={startNewChat}
-                      className="bg-editorial-red dark:bg-dark-accent text-white dark:text-dark-bg px-14 py-4 text-[10px] font-bold uppercase tracking-[0.4em] hover:bg-black dark:hover:bg-white transition-all active:scale-[0.98] shadow-[0_20px_50px_rgba(165,42,42,0.2)] dark:shadow-dark-accent/20"
+                      className="bg-editorial-red text-white px-8 md:px-14 py-4 text-[10px] font-bold uppercase tracking-[0.4em] hover:bg-editorial-highlight hover:text-editorial-red border-editorial-red transition-all active:scale-[0.98] shadow-2xl"
                     >
                       NUEVA SESIÓN
                     </button>
@@ -1406,9 +1433,9 @@ export default function App() {
 
         {/* Input Area */}
         {view === 'chat' && activeChat && currentScreen === 'interviews' && (
-          <div className="p-8 bg-editorial-highlight border-t-2 border-editorial-border sticky bottom-0 z-30 shadow-[0_-10px_60px_rgba(0,0,0,0.1)] transition-colors duration-500">
+          <div className="p-4 md:p-8 bg-editorial-highlight border-t-2 border-editorial-border sticky bottom-0 z-30 shadow-[0_-10px_60px_rgba(0,0,0,0.1)] transition-colors duration-500">
             <div className="max-w-3xl mx-auto flex flex-col gap-4">
-              <div className="relative flex items-end gap-0">
+              <div className="relative flex items-end gap-4">
                 <textarea
                   ref={textareaRef}
                   value={input}
@@ -1421,16 +1448,16 @@ export default function App() {
                   }}
                   rows={2}
                   placeholder="Escriba los detalles de su proceso aquí..."
-                  className="flex-1 bg-white dark:bg-editorial-bg border-2 border-editorial-text px-8 py-5 text-[15px] font-medium tracking-normal focus:outline-none focus:ring-2 focus:ring-editorial-accent text-editorial-text dark:text-white transition-all outline-none placeholder:text-editorial-muted/50 resize-none custom-scrollbar min-h-[80px]"
+                  className="flex-1 bg-editorial-bg border-2 border-editorial-text/20 px-4 md:px-8 py-3 md:py-5 text-[14px] md:text-[15px] font-montserrat tracking-normal focus:outline-none focus:ring-2 focus:ring-editorial-accent text-black transition-all outline-none placeholder:text-gray-600 shadow-[0_4px_10px_-2px_rgba(0,0,0,0.1)] resize-none custom-scrollbar min-h-[60px] md:min-h-[80px]"
                 />
                 <button 
                   onClick={sendMessage}
                   disabled={!input.trim() || isSending}
                   className={cn(
-                    "px-10 h-full self-stretch flex items-center justify-center transition-all uppercase tracking-[0.4em] text-[12px] font-black",
+                    "px-6 md:px-10 h-full self-stretch flex items-center justify-center transition-all active:scale-[0.98] uppercase tracking-[0.4em] text-[12px] font-black font-montserrat shadow-[0_4px_15px_-3px_rgba(220,38,38,0.2)]",
                     !input.trim() || isSending 
-                      ? "bg-editorial-highlight dark:bg-dark-surface text-editorial-muted dark:text-dark-muted cursor-not-allowed border border-editorial-border dark:border-dark-border" 
-                      : "bg-editorial-accent dark:bg-dark-accent text-white dark:text-dark-bg hover:bg-black dark:hover:bg-white shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] shadow-editorial-accent/20"
+                      ? "bg-editorial-highlight text-editorial-muted cursor-not-allowed border-2 border-editorial-border" 
+                      : "bg-red-50 text-editorial-red border-2 border-editorial-red hover:bg-editorial-red hover:text-white"
                   )}
                 >
                   {isSending ? <Loader2 className="h-6 w-6 animate-spin" /> : "ENVIAR"}
@@ -1440,12 +1467,12 @@ export default function App() {
               <div className="flex justify-between items-center">
                  <button 
                   onClick={() => finalizeReport(activeChat.id, activeChat.messages)}
-                  className="text-[10px] font-black text-editorial-red dark:text-dark-accent hover:text-black dark:hover:text-white uppercase tracking-[0.3em] transition-all flex items-center gap-3 group"
+                  className="text-[10px] font-black text-editorial-red hover:text-red-400 uppercase tracking-[0.3em] transition-all flex items-center gap-3 group"
                  >
-                   <div className="w-6 h-px bg-editorial-red dark:bg-dark-accent group-hover:w-12 transition-all" />
+                   <div className="w-6 h-px bg-editorial-red group-hover:w-12 transition-all" />
                    [ FINALIZAR Y GENERAR PROTOCOLO IA ]
                  </button>
-                 <div className="text-[9px] text-editorial-muted dark:text-dark-muted font-black uppercase tracking-[0.4em] italic opacity-60 flex items-center gap-2">
+                 <div className="text-[9px] text-editorial-muted font-black uppercase tracking-[0.4em] italic opacity-60 flex items-center gap-2">
                     <div className="w-2 h-2 bg-editorial-red rounded-none" />
                     BPA ENGINE // AI STRATEGY ANALYST v1.2
                  </div>

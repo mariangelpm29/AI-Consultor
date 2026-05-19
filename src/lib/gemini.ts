@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 const getApiKey = () => {
   // Prefer VITE_ prefix for client-side Vite apps
-  const key = import.meta.env.VITE_GEMINI_API_KEY || 
+  const key = (import.meta as any).env.VITE_GEMINI_API_KEY || 
               (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) || 
               '';
   return key;
@@ -46,7 +46,11 @@ En ese instante, genera el informe con esta estructura:
 4. Soluciones de IA Propuestas y Beneficios.
 5. Requerimientos Técnicos y de Datos para la Implementación.
 
-IMPORTANTE: El primer mensaje debe ser una breve presentación profesional enfocada en optimización con IA y la primera pregunta sobre el puesto.`;
+IMPORTANTE: 
+- El primer mensaje debe ser una breve presentación profesional enfocada en optimización con IA y la primera pregunta sobre el puesto.
+- Respeta SIEMPRE el uso de mayúsculas y minúsculas correctamente.
+- Utiliza espacios adecuados para separar párrafos y preguntas, facilitando la legibilidad.
+- Separa cada pregunta con un espacio en blanco adicional para que sea claramente visible.`;
 
 export async function generateInterviewResponse(messages: { role: 'user' | 'model', text: string }[], modelName: string = MODELS.FLASH) {
   const chat = ai.models.generateContentStream({
