@@ -54,7 +54,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { generateInterviewResponse, generateFinalReport, MODELS, isApiKeySet } from './lib/gemini';
+import { generateInterviewResponse, generateFinalReport, MODELS, isApiKeySet, getApiKey } from './lib/gemini';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -256,7 +256,7 @@ export default function App() {
     setIsSending(true);
 
     try {
-      if (!isApiKeySet) {
+      if (!isApiKeySet && !getApiKey()) {
         throw new Error('MISSING_API_KEY');
       }
       // Optimistic update
@@ -290,9 +290,29 @@ export default function App() {
       console.error(e);
       // Show error in chat
       const chatDocRef = doc(db, 'conversations', activeChat.id);
-      const errorMessage = e instanceof Error && e.message === 'MISSING_API_KEY' 
-        ? '⚠️ No se ha configurado la clave de IA (VITE_GEMINI_API_KEY) en los ajustes del servidor (Vercel). Por favor, agrégala en Environment Variables y vuelve a desplegar.'
-        : 'Error de conexión con el asistente. Por favor, verifica tu clave de API o conexión a internet.';
+      let errorMessage = 'Error de conexión con el asistente. Por favor, verifica tu clave de API o conexión a internet.';
+      
+      if (e instanceof Error) {
+        if (e.message === 'MISSING_API_KEY') {
+          errorMessage = '⚠️ No se ha configurado la clave de IA (VITE_GEMINI_API_KEY). Por favor, agrégala en los Ajustes > Secretos del panel de AI Studio.';
+        } else {
+          const errMsg = e.toString();
+          const msgLower = errMsg.toLowerCase();
+          let detail = e.message || errMsg;
+          
+          if (msgLower.includes('api_key_invalid') || msgLower.includes('not valid') || msgLower.includes('invalid key') || msgLower.includes('api key')) {
+            detail = 'La clave API de Gemini no es válida. Por favor verifica que esté copiada perfectamente en Ajustes > Secretos del panel de AI Studio.';
+          } else if (msgLower.includes('resource_exhausted') || msgLower.includes('rate limit') || msgLower.includes('quota') || msgLower.includes('exhausted')) {
+            detail = 'Has excedido el límite de cuota o de peticiones por minuto permitidas por Google Gemini (Resource Exhausted). Por favor, espera un minuto antes de reintentar.';
+          } else if (msgLower.includes('failed to fetch') || msgLower.includes('network error') || msgLower.includes('blocked by') || msgLower.includes('net::err')) {
+            detail = 'Bloqueo de red directo desde tu navegador. Esto suele ser causado por extensiones bloqueadoras de anuncios (como AdBlock o uBlock Origin), Brave Shields, firewalls de empresas o VPNs activas que filtran solicitudes a dominios de Google (googleapis.com).';
+          } else if (msgLower.includes('safety') || msgLower.includes('blocked')) {
+            detail = 'El modelo de IA bloqueó la respuesta debido a sus políticas y filtros de seguridad.';
+          }
+          
+          errorMessage = `Error de conexión con el asistente.\n\n🔍 Detalle técnico:\n${detail}\n\nPor favor, verifica tu configuración de red o clave en tus Ajustes > Secretos e inténtalo de nuevo.`;
+        }
+      }
 
       await updateDoc(chatDocRef, {
         messages: [...updatedMessages, { 

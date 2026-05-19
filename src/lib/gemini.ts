@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-const getApiKey = () => {
+export const getApiKey = () => {
   // Prefer VITE_ prefix for client-side Vite apps
   const key = (import.meta as any).env.VITE_GEMINI_API_KEY || 
               (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) || 
@@ -8,13 +8,19 @@ const getApiKey = () => {
   return key;
 };
 
-const key = getApiKey();
-export const isApiKeySet = !!key;
-if (!key && typeof window !== 'undefined') {
+const initialKey = getApiKey();
+export const isApiKeySet = !!initialKey;
+if (!initialKey && typeof window !== 'undefined') {
   console.warn("VITE_GEMINI_API_KEY no encontrada. La IA no responderá hasta que se configure la variable de entorno.");
 }
 
-const ai = new GoogleGenAI({ apiKey: key });
+function getGeminiClient() {
+  const currentKey = getApiKey();
+  if (!currentKey) {
+    throw new Error('MISSING_API_KEY');
+  }
+  return new GoogleGenAI({ apiKey: currentKey });
+}
 
 export const MODELS = {
   FLASH: 'gemini-3-flash-preview',
@@ -53,7 +59,7 @@ IMPORTANTE:
 - Separa cada pregunta con un espacio en blanco adicional para que sea claramente visible.`;
 
 export async function generateInterviewResponse(messages: { role: 'user' | 'model', text: string }[], modelName: string = MODELS.FLASH) {
-  const chat = ai.models.generateContentStream({
+  const chat = getGeminiClient().models.generateContentStream({
     model: modelName,
     contents: messages.map(m => ({ 
       role: m.role === 'user' ? 'user' : 'model', 
@@ -81,7 +87,7 @@ export async function generateFinalReport(conversationHistory: string, modelName
   Responde ÚNICAMENTE con el informe estructurado en formato JSON para que pueda procesarlo. El JSON debe tener estas llaves: resumenEjecutivo, inventarioTareas, stackTecnologico, oportunidadesAutomatizacion, requerimientosTecnicos.
   También incluye el 'sector' y 'rol' detectados.`;
 
-  const response = await ai.models.generateContent({
+  const response = await getGeminiClient().models.generateContent({
     model: modelName,
     contents: [{ parts: [{ text: prompt }] }],
     config: {
