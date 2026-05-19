@@ -19,13 +19,31 @@ function getGeminiClient() {
   if (!currentKey) {
     throw new Error('MISSING_API_KEY');
   }
-  return new GoogleGenAI({ apiKey: currentKey });
+  return new GoogleGenAI({ 
+    apiKey: currentKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      }
+    }
+  });
 }
 
 export const MODELS = {
-  FLASH: 'gemini-3-flash-preview',
+  FLASH: 'gemini-3.5-flash',
   PRO: 'gemini-3.1-pro-preview',
 };
+
+const FLASH_FALLBACKS = [
+  'gemini-3.5-flash',
+  'gemini-2.5-flash',
+  'gemini-3-flash-preview',
+];
+
+const PRO_FALLBACKS = [
+  'gemini-3.1-pro-preview',
+  'gemini-2.5-pro',
+];
 
 const SYSTEM_INSTRUCTION = `Actúa como un Especialista en Implementación de Inteligencia Artificial y Arquitecto de Soluciones Senior. 
 Tu objetivo central y EXCLUSIVO es entrevistar al usuario para identificar procesos de negocio donde se puedan aplicar soluciones de Inteligencia Artificial (IA) y Automatización Avanzada.
@@ -58,19 +76,50 @@ IMPORTANTE:
 - Utiliza espacios adecuados para separar párrafos y preguntas, facilitando la legibilidad.
 - Separa cada pregunta con un espacio en blanco adicional para que sea claramente visible.`;
 
-export async function generateInterviewResponse(messages: { role: 'user' | 'model', text: string }[], modelName: string = MODELS.FLASH) {
-  const chat = getGeminiClient().models.generateContentStream({
-    model: modelName,
-    contents: messages.map(m => ({ 
-      role: m.role === 'user' ? 'user' : 'model', 
-      parts: [{ text: m.text }] 
-    })),
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-    }
-  });
+export async function* generateInterviewResponse(messages: { role: 'user' | 'model', text: string }[], modelName: string = MODELS.FLASH) {
+  const isPro = modelName.toLowerCase().includes('pro');
+  const candidates = isPro 
+    ? [modelName, ...PRO_FALLBACKS.filter(m => m !== modelName), ...FLASH_FALLBACKS]
+    : [modelName, ...FLASH_FALLBACKS.filter(m => m !== modelName), ...PRO_FALLBACKS];
 
-  return chat;
+  // Unique elements while preserving search priority order
+  const allCandidates = [...new Set(candidates)];
+
+  let lastError: any = null;
+  for (const model of allCandidates) {
+    let started = false;
+    try {
+      console.log(`[Gemini Fallback System] Iniciando stream con ${model}...`);
+      const stream = await getGeminiClient().models.generateContentStream({
+        model,
+        contents: messages.map(m => ({ 
+          role: m.role === 'user' ? 'user' : 'model', 
+          parts: [{ text: m.text }] 
+        })),
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+        }
+      });
+
+      for await (const chunk of stream) {
+        started = true;
+        yield chunk;
+      }
+      
+      // If we finished successfully without errors, we are done
+      return;
+    } catch (e: any) {
+      console.warn(`[Gemini Fallback System] Error llamando a ${model}:`, e);
+      lastError = e;
+      // If it failed after emitting some chunks, we can't easily resume seamlessly from the middle of a word,
+      // but if it failed at the very start (!started), we try the next candidate model!
+      if (started) {
+        throw e;
+      }
+    }
+  }
+  // If we exhaust all models
+  throw lastError || new Error("No se pudo establecer conexión con ningún modelo de Gemini disponible.");
 }
 
 export async function generateFinalReport(conversationHistory: string, modelName: string = MODELS.PRO) {
@@ -85,21 +134,33 @@ export async function generateFinalReport(conversationHistory: string, modelName
   ${conversationHistory}
   
   Responde ÚNICAMENTE con el informe estructurado en formato JSON para que pueda procesarlo. El JSON debe tener estas llaves: resumenEjecutivo, inventarioTareas, stackTecnologico, oportunidadesAutomatizacion, requerimientosTecnicos.
-  También incluye el 'sector' y 'rol' detectados.`;
+  También incluye el 'sector' and 'rol' detectados.`;
 
-  const response = await getGeminiClient().models.generateContent({
-    model: modelName,
-    contents: [{ parts: [{ text: prompt }] }],
-    config: {
-      responseMimeType: "application/json",
+  const isPro = modelName.toLowerCase().includes('pro');
+  const candidates = isPro
+    ? [modelName, ...PRO_FALLBACKS.filter(m => m !== modelName), ...FLASH_FALLBACKS]
+    : [modelName, ...FLASH_FALLBACKS.filter(m => m !== modelName), ...PRO_FALLBACKS];
+
+  const allCandidates = [...new Set(candidates)];
+
+  let lastError: any = null;
+  for (const model of allCandidates) {
+    try {
+      console.log(`[Gemini Fallback System] Iniciando generación de informe con ${model}...`);
+      const response = await getGeminiClient().models.generateContent({
+        model,
+        contents: [{ parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: "application/json",
+        }
+      });
+      
+      return JSON.parse(response.text);
+    } catch (e: any) {
+      console.warn(`[Gemini Fallback System] Error generando informe con ${model}:`, e);
+      lastError = e;
     }
-  });
-
-  try {
-    return JSON.parse(response.text);
-  } catch (e) {
-    console.error("Error parsing AI response for report", e);
-    // Fallback or re-try logic if needed
-    return null;
   }
+
+  throw lastError || new Error("No se pudo generar el informe con ningún modelo de Gemini disponible.");
 }
