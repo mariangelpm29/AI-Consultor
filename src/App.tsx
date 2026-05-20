@@ -506,7 +506,16 @@ export default function App() {
       await new Promise(resolve => setTimeout(resolve, 800));
     }
 
-    const element = document.getElementById('report-content');
+    let element = document.getElementById('report-content');
+    if (!element) {
+      // Wait up to 5 times (2000ms total) for the DOM element to mount
+      for (let i = 0; i < 5; i++) {
+        await new Promise(resolve => setTimeout(resolve, 400));
+        element = document.getElementById('report-content');
+        if (element) break;
+      }
+    }
+
     if (!element) {
       alert("Preparando reporte para impresión... Por favor intente de nuevo en un segundo.");
       return;
