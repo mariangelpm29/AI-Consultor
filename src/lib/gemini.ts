@@ -155,7 +155,16 @@ export async function generateFinalReport(conversationHistory: string, modelName
         }
       });
       
-      return JSON.parse(response.text);
+      let text = response.text;
+      if (!text) {
+        throw new Error("Respuesta vacía de la IA");
+      }
+      text = text.trim();
+      if (text.startsWith("```")) {
+        text = text.replace(/^```[a-zA-Z]*\s*/, "").replace(/\s*```$/, "");
+      }
+      text = text.trim();
+      return JSON.parse(text);
     } catch (e: any) {
       console.warn(`[Gemini Fallback System] Error generando informe con ${model}:`, e);
       lastError = e;

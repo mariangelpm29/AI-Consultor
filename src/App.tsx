@@ -107,6 +107,7 @@ export default function App() {
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(MODELS.FLASH);
   const [isSending, setIsSending] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
   const [view, setView] = useState<'chat' | 'report'>('chat');
   const [currentScreen, setCurrentScreen] = useState<'interviews' | 'repository'>('interviews');
   const [darkMode, setDarkMode] = useState(true);
@@ -328,6 +329,7 @@ export default function App() {
 
   const finalizeReport = async (chatId: string, history: Message[]) => {
     if (!user) return;
+    setIsFinishing(true);
     try {
       const historyText = history.map(m => `${m.role}: ${m.text}`).join('\n');
       const docData = await generateFinalReport(historyText, MODELS.PRO);
@@ -358,12 +360,31 @@ export default function App() {
           updatedAt: serverTimestamp()
         });
 
+        const newReport = { id: reportRef.id, ...reportData } as Report;
         // Set the active report immediately for the view
-        setActiveReport({ id: reportRef.id, ...reportData } as Report);
+        setActiveReport(newReport);
         setView('report');
+
+        // Automatically trigger PDF download after DOM has had a moment to render
+        setTimeout(() => {
+          downloadPDF(newReport);
+        }, 1500);
+      } else {
+        throw new Error('No se pudo procesar la respuesta estructurada de la IA.');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Report generation failed", e);
+      let errorMsg = 'Error inesperado.';
+      if (e instanceof Error) {
+        errorMsg = e.message;
+      } else if (typeof e === 'string') {
+        errorMsg = e;
+      } else if (e && typeof e === 'object') {
+        errorMsg = JSON.stringify(e);
+      }
+      alert(`⚠️ Lo sentimos, hubo un problema al generar el informe final con la IA.\n\nDetalle técnico:\n${errorMsg}\n\nPor favor, verifica tu conexión e inténtalo de nuevo.`);
+    } finally {
+      setIsFinishing(false);
     }
   };
 
@@ -456,13 +477,13 @@ export default function App() {
     if (reportToDownload && view !== 'report') {
       setActiveReport(reportToDownload);
       setView('report');
-      setTimeout(() => downloadPDF(), 500);
-      return;
+      // Wait for layout to mount properly before fetching reference
+      await new Promise(resolve => setTimeout(resolve, 800));
     }
 
     const element = document.getElementById('report-content');
     if (!element) {
-      alert("Cargando reporte... Intente de nuevo.");
+      alert("Preparando reporte para impresión... Por favor intente de nuevo en un segundo.");
       return;
     }
 
@@ -488,7 +509,8 @@ export default function App() {
 
     try {
       setIsDownloading(true);
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Delay to make sure layout has finished rendering fully
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       const canvas = await html2canvas(element, {
         scale: 1.5,
@@ -496,85 +518,98 @@ export default function App() {
         backgroundColor: '#ffffff',
         logging: false,
         onclone: (clonedDoc) => {
-          // 1. COMPLETELY REMOVE all existing styles to prevent html2canvas from parsing them
-          const problematicStyles = clonedDoc.querySelectorAll('style, link[rel="stylesheet"]');
-          problematicStyles.forEach(s => s.remove());
+          // 1. Keep stylesheets, but replace OKLCH, OKLAB, LCH values inside <style> tags 
+          // to make sure html2canvas internally behaves well and doesn't throw parser crashes.
+          clonedDoc.querySelectorAll('style').forEach(s => {
+            try {
+              if (s.textContent) {
+                s.textContent = s.textContent.replace(/(oklch|oklab|lch)\([^)]+\)/g, 'rgb(120, 120, 120)');
+              } else if (s.innerHTML) {
+                s.innerHTML = s.innerHTML.replace(/(oklch|oklab|lch)\([^)]+\)/g, 'rgb(120, 120, 120)');
+              }
+            } catch (e) {
+              console.warn("Could not patch styles:", e);
+            }
+          });
 
           const container = clonedDoc.getElementById('report-content');
           if (container) {
-            // 2. Clear out any global document backgrounds
             clonedDoc.body.style.backgroundColor = '#ffffff';
 
-            // Recursive function to copy computed styles from original element to cloned element
+            // 2. Recursively copy computed styles inline
             const copyStyles = (originalNode: HTMLElement, clonedNode: HTMLElement) => {
               if (!originalNode || !clonedNode) return;
-              const style = window.getComputedStyle(originalNode);
-              
-              clonedNode.style.color = toSafeColor(style.color) || '#111111';
-              clonedNode.style.backgroundColor = toSafeColor(style.backgroundColor) || 'transparent';
-              clonedNode.style.borderColor = toSafeColor(style.borderColor) || 'transparent';
-              
-              // Copy borders
-              clonedNode.style.borderWidth = style.borderWidth;
-              clonedNode.style.borderStyle = style.borderStyle;
-              clonedNode.style.borderTopWidth = style.borderTopWidth;
-              clonedNode.style.borderTopStyle = style.borderTopStyle;
-              clonedNode.style.borderTopColor = toSafeColor(style.borderTopColor) || 'transparent';
-              clonedNode.style.borderBottomWidth = style.borderBottomWidth;
-              clonedNode.style.borderBottomStyle = style.borderBottomStyle;
-              clonedNode.style.borderBottomColor = toSafeColor(style.borderBottomColor) || 'transparent';
-              clonedNode.style.borderLeftWidth = style.borderLeftWidth;
-              clonedNode.style.borderLeftStyle = style.borderLeftStyle;
-              clonedNode.style.borderLeftColor = toSafeColor(style.borderLeftColor) || 'transparent';
-              clonedNode.style.borderRightWidth = style.borderRightWidth;
-              clonedNode.style.borderRightStyle = style.borderRightStyle;
-              clonedNode.style.borderRightColor = toSafeColor(style.borderRightColor) || 'transparent';
+              try {
+                const style = window.getComputedStyle(originalNode);
+                
+                clonedNode.style.color = toSafeColor(style.color) || '#111111';
+                clonedNode.style.backgroundColor = toSafeColor(style.backgroundColor) || 'transparent';
+                clonedNode.style.borderColor = toSafeColor(style.borderColor) || 'transparent';
+                
+                // Copy borders
+                clonedNode.style.borderWidth = style.borderWidth;
+                clonedNode.style.borderStyle = style.borderStyle;
+                clonedNode.style.borderTopWidth = style.borderTopWidth;
+                clonedNode.style.borderTopStyle = style.borderTopStyle;
+                clonedNode.style.borderTopColor = toSafeColor(style.borderTopColor) || 'transparent';
+                clonedNode.style.borderBottomWidth = style.borderBottomWidth;
+                clonedNode.style.borderBottomStyle = style.borderBottomStyle;
+                clonedNode.style.borderBottomColor = toSafeColor(style.borderBottomColor) || 'transparent';
+                clonedNode.style.borderLeftWidth = style.borderLeftWidth;
+                clonedNode.style.borderLeftStyle = style.borderLeftStyle;
+                clonedNode.style.borderLeftColor = toSafeColor(style.borderLeftColor) || 'transparent';
+                clonedNode.style.borderRightWidth = style.borderRightWidth;
+                clonedNode.style.borderRightStyle = style.borderRightStyle;
+                clonedNode.style.borderRightColor = toSafeColor(style.borderRightColor) || 'transparent';
 
-              clonedNode.style.padding = style.padding;
-              clonedNode.style.margin = style.margin;
-              clonedNode.style.display = style.display;
-              clonedNode.style.flexDirection = style.flexDirection;
-              clonedNode.style.alignItems = style.alignItems;
-              clonedNode.style.justifyContent = style.justifyContent;
-              clonedNode.style.gap = style.gap;
-              clonedNode.style.fontSize = style.fontSize;
-              clonedNode.style.fontWeight = style.fontWeight;
-              clonedNode.style.fontFamily = 'Montserrat, Inter, system-ui, sans-serif';
-              clonedNode.style.lineHeight = style.lineHeight;
-              clonedNode.style.borderRadius = style.borderRadius;
-              
-              // Copy size constraints to preserve formatting
-              clonedNode.style.width = style.width;
-              clonedNode.style.height = style.height;
-              clonedNode.style.maxWidth = style.maxWidth;
-              clonedNode.style.minWidth = style.minWidth;
-              clonedNode.style.position = style.position;
-              clonedNode.style.top = style.top;
-              clonedNode.style.right = style.right;
-              clonedNode.style.bottom = style.bottom;
-              clonedNode.style.left = style.left;
-              
-              // Copy grid properties
-              clonedNode.style.gridTemplateColumns = style.gridTemplateColumns;
-              clonedNode.style.gridGap = style.gridGap;
-              if (style.columnGap) clonedNode.style.columnGap = style.columnGap;
-              if (style.rowGap) clonedNode.style.rowGap = style.rowGap;
+                clonedNode.style.padding = style.padding;
+                clonedNode.style.margin = style.margin;
+                clonedNode.style.display = style.display;
+                clonedNode.style.flexDirection = style.flexDirection;
+                clonedNode.style.alignItems = style.alignItems;
+                clonedNode.style.justifyContent = style.justifyContent;
+                clonedNode.style.gap = style.gap;
+                clonedNode.style.fontSize = style.fontSize;
+                clonedNode.style.fontWeight = style.fontWeight;
+                clonedNode.style.fontFamily = 'Montserrat, Inter, system-ui, sans-serif';
+                clonedNode.style.lineHeight = style.lineHeight;
+                clonedNode.style.borderRadius = style.borderRadius;
+                
+                // Copy size constraints to preserve formatting
+                clonedNode.style.width = style.width;
+                clonedNode.style.height = style.height;
+                clonedNode.style.maxWidth = style.maxWidth;
+                clonedNode.style.minWidth = style.minWidth;
+                clonedNode.style.position = style.position;
+                clonedNode.style.top = style.top;
+                clonedNode.style.right = style.right;
+                clonedNode.style.bottom = style.bottom;
+                clonedNode.style.left = style.left;
+                
+                // Copy grid properties
+                clonedNode.style.gridTemplateColumns = style.gridTemplateColumns;
+                clonedNode.style.gridGap = style.gridGap;
+                if (style.columnGap) clonedNode.style.columnGap = style.columnGap;
+                if (style.rowGap) clonedNode.style.rowGap = style.rowGap;
 
-              // Clear complex filters to avoid rendering blank frames
-              clonedNode.style.filter = 'none';
-              clonedNode.style.backdropFilter = 'none';
-              clonedNode.style.boxShadow = 'none';
+                // Clear complex filters to avoid rendering blank frames
+                clonedNode.style.filter = 'none';
+                clonedNode.style.backdropFilter = 'none';
+                clonedNode.style.boxShadow = 'none';
 
-              if (['H1', 'H2', 'H3', 'H4'].includes(clonedNode.tagName)) {
-                clonedNode.style.color = '#000000';
-              }
-
-              const origChildren = originalNode.children;
-              const clonedChildren = clonedNode.children;
-              for (let i = 0; i < origChildren.length; i++) {
-                if (origChildren[i] && clonedChildren[i]) {
-                  copyStyles(origChildren[i] as HTMLElement, clonedChildren[i] as HTMLElement);
+                if (['H1', 'H2', 'H3', 'H4'].includes(clonedNode.tagName)) {
+                  clonedNode.style.color = '#000000';
                 }
+
+                const origChildren = originalNode.children;
+                const clonedChildren = clonedNode.children;
+                for (let i = 0; i < origChildren.length; i++) {
+                  if (origChildren[i] && clonedChildren[i]) {
+                    copyStyles(origChildren[i] as HTMLElement, clonedChildren[i] as HTMLElement);
+                  }
+                }
+              } catch (e) {
+                console.warn("Could not copy styled element in clone doc", e);
               }
             };
 
@@ -584,7 +619,7 @@ export default function App() {
             // Re-apply special responsive dimensions for print
             container.style.backgroundColor = '#ffffff';
             container.style.color = '#111111';
-            container.style.margin = '0';
+            container.style.margin = '0 auto';
             container.style.padding = '40px';
             container.style.width = '800px';
 
@@ -1523,15 +1558,23 @@ export default function App() {
                 </button>
               </div>
               
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-6 pt-5 border-t border-black/5 mt-2">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-6 pt-6 border-t border-black/10 mt-8">
                  <button 
                   onClick={() => finalizeReport(activeChat.id, activeChat.messages)}
-                  className="px-4 py-1.5 bg-[#A52A2A] text-white hover:bg-red-600 hover:border-red-600 transition-all text-[10px] font-black uppercase tracking-[0.25em] shadow-md hover:shadow-[0_4px_15px_-4px_rgba(220,38,38,0.5)] active:scale-95 border-2 border-[#A52A2A] rounded-none"
+                  disabled={isFinishing}
+                  className="px-3.5 py-1.5 bg-[#A52A2A] text-white border border-[#A52A2A] hover:bg-red-500 hover:border-red-500 active:bg-red-400 active:border-red-400 transition-all text-[9.5px] font-black uppercase tracking-[0.2em] shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 rounded-none"
                  >
-                   FINALIZAR Y GENERAR INFORME
+                   {isFinishing ? (
+                     <>
+                       <Loader2 className="h-3 w-3 animate-spin text-white" />
+                       GENERANDO INFORME...
+                     </>
+                   ) : (
+                     "FINALIZAR Y GENERAR INFORME"
+                   )}
                  </button>
                  <div className="text-[9px] text-editorial-muted font-black uppercase tracking-[0.4em] italic opacity-60 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-editorial-red rounded-none" />
+                    <div className="w-2 h-2 bg-editorial-red rounded-none animate-pulse" />
                     BPA ENGINE // AI STRATEGY ANALYST v1.2
                  </div>
               </div>
