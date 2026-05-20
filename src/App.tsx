@@ -504,51 +504,90 @@ export default function App() {
           if (container) {
             // 2. Clear out any global document backgrounds
             clonedDoc.body.style.backgroundColor = '#ffffff';
-            
+
+            // Recursive function to copy computed styles from original element to cloned element
+            const copyStyles = (originalNode: HTMLElement, clonedNode: HTMLElement) => {
+              if (!originalNode || !clonedNode) return;
+              const style = window.getComputedStyle(originalNode);
+              
+              clonedNode.style.color = toSafeColor(style.color) || '#111111';
+              clonedNode.style.backgroundColor = toSafeColor(style.backgroundColor) || 'transparent';
+              clonedNode.style.borderColor = toSafeColor(style.borderColor) || 'transparent';
+              
+              // Copy borders
+              clonedNode.style.borderWidth = style.borderWidth;
+              clonedNode.style.borderStyle = style.borderStyle;
+              clonedNode.style.borderTopWidth = style.borderTopWidth;
+              clonedNode.style.borderTopStyle = style.borderTopStyle;
+              clonedNode.style.borderTopColor = toSafeColor(style.borderTopColor) || 'transparent';
+              clonedNode.style.borderBottomWidth = style.borderBottomWidth;
+              clonedNode.style.borderBottomStyle = style.borderBottomStyle;
+              clonedNode.style.borderBottomColor = toSafeColor(style.borderBottomColor) || 'transparent';
+              clonedNode.style.borderLeftWidth = style.borderLeftWidth;
+              clonedNode.style.borderLeftStyle = style.borderLeftStyle;
+              clonedNode.style.borderLeftColor = toSafeColor(style.borderLeftColor) || 'transparent';
+              clonedNode.style.borderRightWidth = style.borderRightWidth;
+              clonedNode.style.borderRightStyle = style.borderRightStyle;
+              clonedNode.style.borderRightColor = toSafeColor(style.borderRightColor) || 'transparent';
+
+              clonedNode.style.padding = style.padding;
+              clonedNode.style.margin = style.margin;
+              clonedNode.style.display = style.display;
+              clonedNode.style.flexDirection = style.flexDirection;
+              clonedNode.style.alignItems = style.alignItems;
+              clonedNode.style.justifyContent = style.justifyContent;
+              clonedNode.style.gap = style.gap;
+              clonedNode.style.fontSize = style.fontSize;
+              clonedNode.style.fontWeight = style.fontWeight;
+              clonedNode.style.fontFamily = 'Montserrat, Inter, system-ui, sans-serif';
+              clonedNode.style.lineHeight = style.lineHeight;
+              clonedNode.style.borderRadius = style.borderRadius;
+              
+              // Copy size constraints to preserve formatting
+              clonedNode.style.width = style.width;
+              clonedNode.style.height = style.height;
+              clonedNode.style.maxWidth = style.maxWidth;
+              clonedNode.style.minWidth = style.minWidth;
+              clonedNode.style.position = style.position;
+              clonedNode.style.top = style.top;
+              clonedNode.style.right = style.right;
+              clonedNode.style.bottom = style.bottom;
+              clonedNode.style.left = style.left;
+              
+              // Copy grid properties
+              clonedNode.style.gridTemplateColumns = style.gridTemplateColumns;
+              clonedNode.style.gridGap = style.gridGap;
+              if (style.columnGap) clonedNode.style.columnGap = style.columnGap;
+              if (style.rowGap) clonedNode.style.rowGap = style.rowGap;
+
+              // Clear complex filters to avoid rendering blank frames
+              clonedNode.style.filter = 'none';
+              clonedNode.style.backdropFilter = 'none';
+              clonedNode.style.boxShadow = 'none';
+
+              if (['H1', 'H2', 'H3', 'H4'].includes(clonedNode.tagName)) {
+                clonedNode.style.color = '#000000';
+              }
+
+              const origChildren = originalNode.children;
+              const clonedChildren = clonedNode.children;
+              for (let i = 0; i < origChildren.length; i++) {
+                if (origChildren[i] && clonedChildren[i]) {
+                  copyStyles(origChildren[i] as HTMLElement, clonedChildren[i] as HTMLElement);
+                }
+              }
+            };
+
+            // Run copy from the original visible element to the cloned layout element
+            copyStyles(element, container);
+
+            // Re-apply special responsive dimensions for print
             container.style.backgroundColor = '#ffffff';
             container.style.color = '#111111';
             container.style.margin = '0';
             container.style.padding = '40px';
-            container.style.width = '800px'; // Set a fixed width for consistent rendering
+            container.style.width = '800px';
 
-            const allItems = container.getElementsByTagName('*');
-            for(let i=0; i<allItems.length; i++) {
-              const el = allItems[i] as HTMLElement;
-              
-              // Get computed styles from the original element before they are stripped in the clone
-              const originalEl = document.querySelector(`[id="${el.id}"]`) as HTMLElement;
-              const sourceEl = originalEl || el;
-              const style = window.getComputedStyle(sourceEl);
-              
-              // 3. Manually re-apply ONLY essential safe styles inline
-              // and convert any oklch/lab functions during application
-              el.style.color = toSafeColor(style.color) || '#111111';
-              el.style.backgroundColor = toSafeColor(style.backgroundColor) || 'transparent';
-              el.style.borderColor = toSafeColor(style.borderColor) || 'transparent';
-              el.style.borderWidth = style.borderWidth;
-              el.style.borderStyle = style.borderStyle;
-              el.style.padding = style.padding;
-              el.style.margin = style.margin;
-              el.style.display = style.display;
-              el.style.flexDirection = style.flexDirection;
-              el.style.alignItems = style.alignItems;
-              el.style.justifyContent = style.justifyContent;
-              el.style.gap = style.gap;
-              el.style.fontSize = style.fontSize;
-              el.style.fontWeight = style.fontWeight;
-              el.style.fontFamily = 'Inter, system-ui, sans-serif'; // Use standard safe font
-              el.style.lineHeight = style.lineHeight;
-              el.style.borderRadius = style.borderRadius;
-              
-              // Strip all modern effects that cause crashes
-              el.style.filter = 'none';
-              el.style.backdropFilter = 'none';
-              el.style.boxShadow = 'none';
-              
-              if (['H1', 'H2', 'H3', 'H4'].includes(el.tagName)) {
-                el.style.color = '#000000';
-              }
-            }
             container.querySelectorAll('button').forEach(btn => btn.remove());
           }
         }
@@ -1484,13 +1523,12 @@ export default function App() {
                 </button>
               </div>
               
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-6 pt-5 border-t border-black/5 mt-2">
                  <button 
                   onClick={() => finalizeReport(activeChat.id, activeChat.messages)}
-                  className="text-[10px] font-black text-editorial-red hover:text-red-400 uppercase tracking-[0.3em] transition-all flex items-center gap-3 group"
+                  className="px-4 py-1.5 bg-[#A52A2A] text-white hover:bg-red-600 hover:border-red-600 transition-all text-[10px] font-black uppercase tracking-[0.25em] shadow-md hover:shadow-[0_4px_15px_-4px_rgba(220,38,38,0.5)] active:scale-95 border-2 border-[#A52A2A] rounded-none"
                  >
-                   <div className="w-6 h-px bg-editorial-red group-hover:w-12 transition-all" />
-                   [ FINALIZAR Y GENERAR PROTOCOLO IA ]
+                   FINALIZAR Y GENERAR INFORME
                  </button>
                  <div className="text-[9px] text-editorial-muted font-black uppercase tracking-[0.4em] italic opacity-60 flex items-center gap-2">
                     <div className="w-2 h-2 bg-editorial-red rounded-none" />
