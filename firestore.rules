@@ -41,12 +41,12 @@ service cloud.firestore {
     function isValidReport(data) {
       return data.userId == request.auth.uid
           && isValidId(data.conversationId)
-          && data.sector is string && data.sector.size() <= 200
-          && data.role is string && data.role.size() <= 200
+          && data.sector is string && data.sector.size() <= 500
+          && data.role is string && data.role.size() <= 500
           && data.status in ['open', 'closed']
           && data.content is map
-          && data.content.resumenEjecutivo is string && data.content.resumenEjecutivo.size() <= 10000
-          && data.content.inventarioTareas is string && data.content.inventarioTareas.size() <= 20000
+          && data.content.resumenEjecutivo is string && data.content.resumenEjecutivo.size() <= 60000
+          && data.content.inventarioTareas is string && data.content.inventarioTareas.size() <= 60000
           // Verify that the conversation actually exists and belongs to the user
           && exists(/databases/$(database)/documents/conversations/$(data.conversationId))
           && get(/databases/$(database)/documents/conversations/$(data.conversationId)).data.userId == request.auth.uid

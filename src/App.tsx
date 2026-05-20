@@ -334,31 +334,56 @@ export default function App() {
       const historyText = history.map(m => `${m.role}: ${m.text}`).join('\n');
       const docData = await generateFinalReport(historyText, MODELS.PRO);
       
+      const ensureString = (val: any): string => {
+        if (val === undefined || val === null) return '';
+        if (typeof val === 'string') return val;
+        if (Array.isArray(val)) {
+          return val.map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join('\n');
+        }
+        if (typeof val === 'object') {
+          return JSON.stringify(val, null, 2);
+        }
+        return String(val);
+      };
+
       if (docData) {
+        const sectorStr = ensureString(docData.sector || 'General').slice(0, 180);
+        const roleStr = ensureString(docData.rol || docData.role || 'Colaborador').slice(0, 180);
+
         const reportData = {
           conversationId: chatId,
           userId: user.uid,
-          sector: docData.sector || 'General',
-          role: docData.rol || 'Colaborador',
+          sector: sectorStr,
+          role: roleStr,
           content: {
-            resumenEjecutivo: docData.resumenEjecutivo || '',
-            inventarioTareas: docData.inventarioTareas || '',
-            stackTecnologico: docData.stackTecnologico || '',
-            oportunidadesAutomatizacion: docData.oportunidadesAutomatizacion || '',
-            requerimientosTecnicos: docData.requerimientosTecnicos || ''
+            resumenEjecutivo: ensureString(docData.resumenEjecutivo || '').slice(0, 9500),
+            inventarioTareas: ensureString(docData.inventarioTareas || '').slice(0, 19500),
+            stackTecnologico: ensureString(docData.stackTecnologico || '').slice(0, 19500),
+            oportunidadesAutomatizacion: ensureString(docData.oportunidadesAutomatizacion || '').slice(0, 19500),
+            requerimientosTecnicos: ensureString(docData.requerimientosTecnicos || '').slice(0, 19500)
           },
           status: 'open' as const,
           createdAt: serverTimestamp()
         };
 
-        const reportRef = await addDoc(collection(db, 'reports'), reportData);
+        let reportRef;
+        try {
+          reportRef = await addDoc(collection(db, 'reports'), reportData);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.CREATE, 'reports');
+          return;
+        }
 
-        await updateDoc(doc(db, 'conversations', chatId), {
-          status: 'closed',
-          sector: docData.sector || 'General',
-          role: docData.rol || 'Colaborador',
-          updatedAt: serverTimestamp()
-        });
+        try {
+          await updateDoc(doc(db, 'conversations', chatId), {
+            status: 'closed',
+            sector: sectorStr,
+            role: roleStr,
+            updatedAt: serverTimestamp()
+          });
+        } catch (error) {
+          handleFirestoreError(error, OperationType.UPDATE, `conversations/${chatId}`);
+        }
 
         const newReport = { id: reportRef.id, ...reportData } as Report;
         // Set the active report immediately for the view
